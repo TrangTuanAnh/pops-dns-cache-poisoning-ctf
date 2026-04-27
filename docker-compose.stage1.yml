@@ -1,0 +1,88 @@
+name: pops-ctf-stage1
+
+services:
+  pops:
+    build: ./pops
+    cap_add:
+      - NET_ADMIN
+    environment:
+      POPS_STAGE: stage1
+      POPS_MODE: dry-run
+      POPS_TAU: ${POPS_TAU:-5}
+      POPS_WINDOW: ${POPS_WINDOW:-1.0}
+      POPS_CMS_W: ${POPS_CMS_W:-200}
+      POPS_CMS_D: ${POPS_CMS_D:-5}
+      POPS_UPSTREAM: 10.0.0.10:53
+    volumes:
+      - pops_logs:/var/log/pops
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.2
+
+  dnsmasq-vulnerable:
+    build: ./dnsmasq-2.82
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - pops
+      - nsd-authoritative
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.3
+
+  nsd-authoritative:
+    build: ./nsd-auth
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.10
+
+  registrar-service:
+    build: ./registrar-service
+    environment:
+      REGISTRAR_STATE_PATH: ${REGISTRAR_STATE_PATH:-/data/registrations.json}
+    ports:
+      - "8080:8080"
+    volumes:
+      - registrar_data:/data
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.30
+
+  spoof-helper:
+    build: ./spoof-helper
+    cap_add:
+      - NET_RAW
+    environment:
+      SPOOF_HELPER_DRY_RUN: ${SPOOF_HELPER_DRY_RUN:-true}
+    ports:
+      - "8082:8080"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.40
+
+  flag-service:
+    build: ./flag-service
+    environment:
+      STAGE: stage1
+      TARGET_DOMAIN: corebank.meridian.example
+      DEFAULT_IP: 1.2.3.6
+      QUERY_INTERVAL: "30"
+      FLAG_1A: ${FLAG_1A:-flag{dev_stage1a_placeholder}}
+      FLAG_1B: ${FLAG_1B:-flag{dev_stage1b_placeholder}}
+    ports:
+      - "8081:8080"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.20
+
+networks:
+  ctf_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+
+volumes:
+  pops_logs:
+  registrar_data:
+

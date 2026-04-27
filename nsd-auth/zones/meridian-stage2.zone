@@ -1,0 +1,14 @@
+$ORIGIN meridian-stage2.example.
+$TTL 60
+@ IN SOA ns1.meridian-stage2.example. admin.meridian-stage2.example. (
+  2026042701 ; serial
+  60         ; refresh
+  30         ; retry
+  120        ; expire
+  60         ; minimum
+)
+@        IN NS ns1.meridian-stage2.example.
+ns1      IN A 10.0.2.10
+fragment IN A 1.2.3.7
+large    IN TXT "placeholder-for-large-fragmentation-response"
+

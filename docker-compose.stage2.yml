@@ -1,0 +1,84 @@
+name: pops-ctf-stage2
+
+services:
+  pops:
+    build: ./pops
+    cap_add:
+      - NET_ADMIN
+    environment:
+      POPS_STAGE: stage2
+      POPS_MODE: dry-run
+      POPS_UPSTREAM: 10.0.2.10:53
+    volumes:
+      - pops_logs:/var/log/pops
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.2
+
+  vulnerable-resolver:
+    build: ./vulnerable-resolver
+    depends_on:
+      - pops
+      - nsd-authoritative
+    environment:
+      RESOLVER_TARGET: fragment.meridian-stage2.example
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.3
+
+  nsd-authoritative:
+    build: ./nsd-auth
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.10
+
+  registrar-service:
+    build: ./registrar-service
+    environment:
+      REGISTRAR_STATE_PATH: ${REGISTRAR_STATE_PATH:-/data/registrations.json}
+    ports:
+      - "8180:8080"
+    volumes:
+      - registrar_data:/data
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.30
+
+  spoof-helper:
+    build: ./spoof-helper
+    cap_add:
+      - NET_RAW
+    environment:
+      SPOOF_HELPER_DRY_RUN: ${SPOOF_HELPER_DRY_RUN:-true}
+    ports:
+      - "8182:8080"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.40
+
+  flag-service:
+    build: ./flag-service
+    environment:
+      STAGE: stage2
+      TARGET_DOMAIN: fragment.meridian-stage2.example
+      DEFAULT_IP: 1.2.3.7
+      QUERY_INTERVAL: "30"
+      FLAG_2A: ${FLAG_2A:-flag{dev_stage2a_placeholder}}
+      FLAG_2B: ${FLAG_2B:-flag{dev_stage2b_placeholder}}
+    ports:
+      - "8181:8080"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.20
+
+networks:
+  ctf_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.2.0/24
+
+volumes:
+  pops_logs:
+  registrar_data:
+

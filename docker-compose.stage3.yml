@@ -1,0 +1,84 @@
+name: pops-ctf-stage3
+
+services:
+  pops:
+    build: ./pops
+    cap_add:
+      - NET_ADMIN
+    environment:
+      POPS_STAGE: stage3
+      POPS_MODE: dry-run
+      POPS_UPSTREAM: 10.0.3.10:53
+    volumes:
+      - pops_logs:/var/log/pops
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.3.2
+
+  technitium-vulnerable:
+    build: ./technitium-vulnerable
+    depends_on:
+      - pops
+      - nsd-authoritative
+    environment:
+      TECHNITIUM_VERSION: "7.0"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.3.3
+
+  nsd-authoritative:
+    build: ./nsd-auth
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.3.10
+
+  registrar-service:
+    build: ./registrar-service
+    environment:
+      REGISTRAR_STATE_PATH: ${REGISTRAR_STATE_PATH:-/data/registrations.json}
+    ports:
+      - "8280:8080"
+    volumes:
+      - registrar_data:/data
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.3.30
+
+  spoof-helper:
+    build: ./spoof-helper
+    cap_add:
+      - NET_RAW
+    environment:
+      SPOOF_HELPER_DRY_RUN: ${SPOOF_HELPER_DRY_RUN:-true}
+    ports:
+      - "8282:8080"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.3.40
+
+  flag-service:
+    build: ./flag-service
+    environment:
+      STAGE: stage3
+      TARGET_DOMAIN: vault.meridian-stage3.example
+      DEFAULT_IP: 1.2.3.8
+      QUERY_INTERVAL: "30"
+      FLAG_3A: ${FLAG_3A:-flag{dev_stage3a_placeholder}}
+      FLAG_3B: ${FLAG_3B:-flag{dev_stage3b_placeholder}}
+    ports:
+      - "8281:8080"
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.3.20
+
+networks:
+  ctf_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.3.0/24
+
+volumes:
+  pops_logs:
+  registrar_data:
+
