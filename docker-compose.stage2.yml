@@ -1,14 +1,24 @@
 name: pops-ctf-stage2
 
+# Stage 2: Rl2 (Fragmentation) + TCP fallback compatibility experiment.
+# Flag 2B so sanh compliant resolver (glibc 2.24, retry TCP) vs non-compliant
+# (servfail khi nhan TC=1). Submit evidence -> validator award flag.
+#
+# Scope 3-flag: bo registrar-service va spoof-helper.
+
 services:
   pops:
     build: ./pops
     cap_add:
       - NET_ADMIN
+      - NET_RAW
     environment:
       POPS_STAGE: stage2
-      POPS_MODE: dry-run
+      POPS_TAU: ${POPS_TAU:-5}
+      POPS_WINDOW: ${POPS_WINDOW:-1.0}
       POPS_UPSTREAM: 10.0.2.10:53
+      POPS_BAILIWICK_ORIGIN: meridian-stage2.example
+      POPS_FRAG_THRESHOLD: ${POPS_FRAG_THRESHOLD:-50}
     volumes:
       - pops_logs:/var/log/pops
     networks:
@@ -17,44 +27,37 @@ services:
 
   vulnerable-resolver:
     build: ./vulnerable-resolver
+    cap_add:
+      - NET_ADMIN
     depends_on:
       - pops
       - nsd-authoritative
     environment:
-      RESOLVER_TARGET: fragment.meridian-stage2.example
+      UPSTREAM_DELAY_MS: ${UPSTREAM_DELAY_MS:-0}
     networks:
       ctf_net:
         ipv4_address: 10.0.2.3
 
+  non-compliant-resolver:
+    build: ./non-compliant-resolver
+    depends_on:
+      - pops
+    environment:
+      UPSTREAM_HOST: 10.0.2.2
+      UPSTREAM_PORT: "53"
+      LISTEN_PORT: "53"
+      NON_COMPLIANT_BEHAVIOR: ${NON_COMPLIANT_BEHAVIOR:-servfail}
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.2.4
+
   nsd-authoritative:
     build: ./nsd-auth
+    volumes:
+      - shared_zones:/shared
     networks:
       ctf_net:
         ipv4_address: 10.0.2.10
-
-  registrar-service:
-    build: ./registrar-service
-    environment:
-      REGISTRAR_STATE_PATH: ${REGISTRAR_STATE_PATH:-/data/registrations.json}
-    ports:
-      - "8180:8080"
-    volumes:
-      - registrar_data:/data
-    networks:
-      ctf_net:
-        ipv4_address: 10.0.2.30
-
-  spoof-helper:
-    build: ./spoof-helper
-    cap_add:
-      - NET_RAW
-    environment:
-      SPOOF_HELPER_DRY_RUN: ${SPOOF_HELPER_DRY_RUN:-true}
-    ports:
-      - "8182:8080"
-    networks:
-      ctf_net:
-        ipv4_address: 10.0.2.40
 
   flag-service:
     build: ./flag-service
@@ -62,11 +65,13 @@ services:
       STAGE: stage2
       TARGET_DOMAIN: fragment.meridian-stage2.example
       DEFAULT_IP: 1.2.3.7
-      QUERY_INTERVAL: "30"
-      FLAG_2A: ${FLAG_2A:-flag{dev_stage2a_placeholder}}
-      FLAG_2B: ${FLAG_2B:-flag{dev_stage2b_placeholder}}
+      RESOLVER_IP: 10.0.2.3
+      ATTACKER_LISTENER_PORT: "8080"
+      FLAG_2B: "${FLAG_2B:-flag{dev_stage2b_placeholder}}"
     ports:
       - "8181:8080"
+    depends_on:
+      - vulnerable-resolver
     networks:
       ctf_net:
         ipv4_address: 10.0.2.20
@@ -80,5 +85,4 @@ networks:
 
 volumes:
   pops_logs:
-  registrar_data:
-
+  shared_zones:

@@ -106,12 +106,12 @@ services:
       - stage3
     environment:
       STAGE: all
-      FLAG_1A: ${FLAG_1A:-flag{dev_stage1a_placeholder}}
-      FLAG_1B: ${FLAG_1B:-flag{dev_stage1b_placeholder}}
-      FLAG_2A: ${FLAG_2A:-flag{dev_stage2a_placeholder}}
-      FLAG_2B: ${FLAG_2B:-flag{dev_stage2b_placeholder}}
-      FLAG_3A: ${FLAG_3A:-flag{dev_stage3a_placeholder}}
-      FLAG_3B: ${FLAG_3B:-flag{dev_stage3b_placeholder}}
+      FLAG_1A: "${FLAG_1A:-flag{dev_stage1a_placeholder}}"
+      FLAG_1B: "${FLAG_1B:-flag{dev_stage1b_placeholder}}"
+      FLAG_2A: "${FLAG_2A:-flag{dev_stage2a_placeholder}}"
+      FLAG_2B: "${FLAG_2B:-flag{dev_stage2b_placeholder}}"
+      FLAG_3A: "${FLAG_3A:-flag{dev_stage3a_placeholder}}"
+      FLAG_3B: "${FLAG_3B:-flag{dev_stage3b_placeholder}}"
     ports:
       - "8081:8080"
     networks:

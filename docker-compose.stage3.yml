@@ -1,60 +1,58 @@
 name: pops-ctf-stage3
 
+# Stage 3: Rl3 (Out-of-Bailiwick) implementation pitfalls.
+# Flag 3B la deterministic API probe: so sanh hai variant POPS
+# (correct vs naive) qua /api/v1/lab/check-bailiwick voi 4 case
+# normalization (case sensitivity, separator dot, trailing dot, IDN).
+#
+# Scope 3-flag: bo Technitium, registrar-service, spoof-helper.
+# Flag 3B khong can resolver path - chi probe POPS API truc tiep.
+
 services:
   pops:
     build: ./pops
     cap_add:
       - NET_ADMIN
+      - NET_RAW
     environment:
       POPS_STAGE: stage3
-      POPS_MODE: dry-run
+      POPS_TAU: ${POPS_TAU:-5}
+      POPS_WINDOW: ${POPS_WINDOW:-1.0}
       POPS_UPSTREAM: 10.0.3.10:53
+      POPS_BAILIWICK_ORIGIN: meridian-stage3.example
+      POPS_NAIVE_BAILIWICK: "0"
+      POPS_FRAG_THRESHOLD: "65535"
     volumes:
       - pops_logs:/var/log/pops
     networks:
       ctf_net:
         ipv4_address: 10.0.3.2
 
-  technitium-vulnerable:
-    build: ./technitium-vulnerable
-    depends_on:
-      - pops
-      - nsd-authoritative
+  pops-naive:
+    build: ./pops
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     environment:
-      TECHNITIUM_VERSION: "7.0"
+      POPS_STAGE: stage3-naive
+      POPS_UPSTREAM: 10.0.3.10:53
+      POPS_BAILIWICK_ORIGIN: meridian-stage3.example
+      POPS_NAIVE_BAILIWICK: "1"
+      POPS_FRAG_THRESHOLD: "65535"
+      POPS_API_PORT: "8080"
+    volumes:
+      - pops_logs:/var/log/pops
     networks:
       ctf_net:
-        ipv4_address: 10.0.3.3
+        ipv4_address: 10.0.3.6
 
   nsd-authoritative:
     build: ./nsd-auth
+    volumes:
+      - shared_zones:/shared
     networks:
       ctf_net:
         ipv4_address: 10.0.3.10
-
-  registrar-service:
-    build: ./registrar-service
-    environment:
-      REGISTRAR_STATE_PATH: ${REGISTRAR_STATE_PATH:-/data/registrations.json}
-    ports:
-      - "8280:8080"
-    volumes:
-      - registrar_data:/data
-    networks:
-      ctf_net:
-        ipv4_address: 10.0.3.30
-
-  spoof-helper:
-    build: ./spoof-helper
-    cap_add:
-      - NET_RAW
-    environment:
-      SPOOF_HELPER_DRY_RUN: ${SPOOF_HELPER_DRY_RUN:-true}
-    ports:
-      - "8282:8080"
-    networks:
-      ctf_net:
-        ipv4_address: 10.0.3.40
 
   flag-service:
     build: ./flag-service
@@ -62,9 +60,8 @@ services:
       STAGE: stage3
       TARGET_DOMAIN: vault.meridian-stage3.example
       DEFAULT_IP: 1.2.3.8
-      QUERY_INTERVAL: "30"
-      FLAG_3A: ${FLAG_3A:-flag{dev_stage3a_placeholder}}
-      FLAG_3B: ${FLAG_3B:-flag{dev_stage3b_placeholder}}
+      ATTACKER_LISTENER_PORT: "8080"
+      FLAG_3B: "${FLAG_3B:-flag{dev_stage3b_placeholder}}"
     ports:
       - "8281:8080"
     networks:
@@ -80,5 +77,4 @@ networks:
 
 volumes:
   pops_logs:
-  registrar_data:
-
+  shared_zones:

@@ -1,69 +1,104 @@
-# POPS CTF - code scaffold
+# POPS CTF - 3-flag scope (cleaned up)
 
-Thu muc nay la phan code cho do an CTF dua tren POPS. Hien tai repo moi o muc setup so bo: da co cau truc thu muc, Docker/Compose skeleton, service stub va tai lieu ngan de team bat dau tach viec. Chua dung lab/exploit hoan chinh.
+> Bộ challenge research-style đánh giá module phòng thủ POPS theo paper
+> "POPS: From History to Mitigation of DNS Cache Poisoning Attacks"
+> (Afek et al., USENIX Security 2025).
 
-## Huong tu proposal
+## Scope
 
-Proposal trong `../Doc/POPS_CTF_Proposal_v2.md` chia challenge thanh 3 stage:
+3 flag deterministic, mỗi flag tương ứng một limitation/property paper
+thừa nhận:
 
-- Stage 1: POPS `R_l1`, CVE-2020-25684 / DNSpooq, resolver vulnerable la `dnsmasq 2.82`.
-- Stage 2: POPS `R_l2`, CVE-2017-12132, resolver wrapper dua tren `glibc`.
-- Stage 3: POPS `R_l3`, CVE-2021-43105, Technitium DNS Server vulnerable va bailiwick checks.
+| Flag | Tên | Rule POPS | Loại thí nghiệm |
+|------|-----|-----------|-----------------|
+| 1B | Window-edge experiment | Rℓ1 (Excessive Guessing) | Đo CMS reset bias tại biên window |
+| 2B | TCP fallback compatibility | Rℓ2 (Fragmentation) | So sánh compliant vs non-compliant resolver |
+| 3B | Algorithm 4 normalization | Rℓ3 (Out-of-Bailiwick) | Probe naive vs correct bailiwick check |
 
-Moi stage se co flag A cho reproduction CVE va flag B cho edge-case/limitation evaluation. Scaffold hien tai giu dung ranh gioi do, nhung cac verifier moi la placeholder.
+> Note: phiên bản trước có 6 flag (3 reproduction CVE + 3 limitation B).
+> 3 flag A đã bị cut khỏi scope vì không thể reproduce reliably trong lab
+> (port randomization của dnsmasq, SFrag race, Technitium login API quirk
+> v7.0). Xem `CLEANUP.md` cho chi tiết.
 
-## Cau truc
+## Cấu trúc
 
 ```text
 code/
-├── docker-compose.master.yml
-├── docker-compose.stage1.yml
-├── docker-compose.stage2.yml
-├── docker-compose.stage3.yml
-├── pops/
-│   ├── Dockerfile
-│   ├── entrypoint.sh
-│   ├── source/
-│   └── patches/
-├── dnsmasq-2.82/
-├── vulnerable-resolver/
-├── technitium-vulnerable/
-├── nsd-auth/
-│   └── zones/
-├── registrar-service/
-├── spoof-helper/
-├── flag-service/
-├── docs/
-├── scripts/
+├── docker-compose.stage1.yml Rℓ1 + window experiment
+├── docker-compose.stage2.yml Rℓ2 + TCP fallback
+├── docker-compose.stage3.yml Rℓ3 + normalization probe
+├── docker-compose.attacker.stage{1,2,3}.yml thêm attacker container
+├── pops/ POPS module (cả 3 stage)
+│ ├── source/ cms.py, bailiwick.py, rules.py, proxy.py, api.py
+│ └── ...
+├── dnsmasq-2.82/ Stage 1 resolver
+├── vulnerable-resolver/ Stage 2 compliant resolver (glibc 2.24)
+├── non-compliant-resolver/ Stage 2 non-compliant (servfail mode)
+├── nsd-auth/ Authoritative
+├── flag-service/ Validator cho 3 flag B
+├── attacker/ Container chạy reference solutions
 └── reference-solutions/
+    ├── stage1_flag_b.py
+    ├── stage2_flag_b.py
+    └── stage3_flag_b.py
 ```
 
 ## Setup nhanh
 
 ```powershell
 Copy-Item .env.example .env
-.\scripts\check-prereqs.ps1
-docker compose -f docker-compose.stage1.yml config
+
+docker compose -f docker-compose.stage1.yml -f docker-compose.attacker.stage1.yml up -d
+docker exec pops-ctf-stage1-attacker-1 python /attack/stage1_flag_b.py
+docker compose -f docker-compose.stage1.yml -f docker-compose.attacker.stage1.yml down -v
+
+docker compose -f docker-compose.stage2.yml -f docker-compose.attacker.stage2.yml up -d
+docker exec pops-ctf-stage2-attacker-1 python /attack/stage2_flag_b.py
+docker compose -f docker-compose.stage2.yml -f docker-compose.attacker.stage2.yml down -v
+
+docker compose -f docker-compose.stage3.yml -f docker-compose.attacker.stage3.yml up -d
+docker exec pops-ctf-stage3-attacker-1 python /attack/stage3_flag_b.py
+docker compose -f docker-compose.stage3.yml -f docker-compose.attacker.stage3.yml down -v
 ```
 
-Neu chi muon xem service stub chay duoc, co the thu:
+(Project name `pops-ctf-stage{1,2,3}` được set từ `name:` trong từng compose
+file. Khi chuyển stage, nhớ down stage trước để tránh conflict subnet.)
 
-```powershell
-docker compose -f docker-compose.stage1.yml up --build
-```
+## POPS implementation note
 
-Luu y: lenh tren chi dung cho smoke test skeleton. POPS source tu Zenodo, exploit code, verifier that va patch lab chua duoc tich hop.
+`pops/source/` là Python implementation theo paper Section 2-4 và
+Algorithm 1-4 Appendix B (không phải Zenodo artifact). Default param theo
+paper: `τ=5, W=1.0s, d=5, w=200`.
 
-## Viec can lam tiep
+Mitigation strict theo paper: rule trip -> tra reply TC=1 + clear toàn bộ
+answer/authority/additional. Resolver tuân thủ RFC retry qua TCP với
+authoritative - đây là contract.
 
-1. Tai artifact POPS tu Zenodo vao `pops/source/`, build va ghi lai exact commit/hash.
-2. Hoan thien POPS transparent proxy thay cho placeholder trong `pops/entrypoint.sh`.
-3. Reproduce Stage 1 voi dnsmasq 2.82 va public PoC DNSpooq.
-4. Hoan thien resolver wrapper Stage 2, fragmentation harness va evidence verifier.
-5. Chot cach lay Technitium v7.0 cho Stage 3, uu tien pin release artifact hoac local image.
-6. Doi flag-service placeholder thanh verifier co replay/evidence validation.
+Patches đã apply (production-quality fix):
 
-## Ghi chu release
+1. **Skip OPT pseudo-RR (RFC 6891)** trong bailiwick check  - 
+   `rules.py:_first_out_of_bailiwick`. Tránh false-positive khi resolver
+   dùng EDNS0.
+2. **Thêm TCP listener** vào `proxy.py`. POPS gốc chỉ UDP, retry path
+   không hoạt động.
 
-`reference-solutions/` khong release cho player. `docs/challenge-description.md` la ban player-facing so bo, can bo sung link paper/CVE va topology truoc khi mo challenge.
+Xem `writeup/patches/pops-skip-opt-pseudo-rr.patch`.
 
+## Stage flow
+
+**Stage 1:** Attacker -> POPS (port 53) -> NSD. Test 10 query within < 1s
+vs 5+5 query split qua biên W. Đo `forwarded` vs `rl1_truncated` qua
+`/api/v1/lab/pops-log`. Submit evidence -> flag 1B.
+
+**Stage 2:** Attacker query 2 resolver (compliant + non-compliant) cho
+target có response trip Rℓ2 (FRAG_THRESHOLD=50). Compliant retry TCP qua
+POPS -> success; non-compliant trả SERVFAIL. Submit evidence -> flag 2B.
+
+**Stage 3:** Attacker probe `/api/v1/lab/check-bailiwick` của 2 POPS
+variant (correct + naive) với 4 normalization case. Submit evidence với
+test_results + analysis -> flag 3B.
+
+## Writeup chính
+
+`../writeup/writeup_beginner.md` - tutorial style, đầy đủ context paper +
+output thật.

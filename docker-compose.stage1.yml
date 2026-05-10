@@ -1,18 +1,27 @@
 name: pops-ctf-stage1
 
+# Stage 1: Rl1 (Excessive Guessing) + window-edge experiment.
+# Flag 1B la deterministic timing experiment: gui 10 query trong window <1s
+# vs 5+5 query qua bien window 1.2s, observe POPS counter forwarded vs
+# rl1_truncated, submit evidence.
+#
+# Scope 3-flag: bo registrar-service va spoof-helper (chi flag A dung).
+
 services:
   pops:
     build: ./pops
     cap_add:
       - NET_ADMIN
+      - NET_RAW
     environment:
       POPS_STAGE: stage1
-      POPS_MODE: dry-run
       POPS_TAU: ${POPS_TAU:-5}
       POPS_WINDOW: ${POPS_WINDOW:-1.0}
       POPS_CMS_W: ${POPS_CMS_W:-200}
       POPS_CMS_D: ${POPS_CMS_D:-5}
       POPS_UPSTREAM: 10.0.0.10:53
+      POPS_BAILIWICK_ORIGIN: meridian.example
+      POPS_FRAG_THRESHOLD: "65535"   # Stage 1 khong test Rl2; tat heuristic
     volumes:
       - pops_logs:/var/log/pops
     networks:
@@ -23,6 +32,8 @@ services:
     build: ./dnsmasq-2.82
     cap_add:
       - NET_ADMIN
+    environment:
+      UPSTREAM_DELAY_MS: ${UPSTREAM_DELAY_MS:-0}
     depends_on:
       - pops
       - nsd-authoritative
@@ -32,33 +43,11 @@ services:
 
   nsd-authoritative:
     build: ./nsd-auth
+    volumes:
+      - shared_zones:/shared
     networks:
       ctf_net:
         ipv4_address: 10.0.0.10
-
-  registrar-service:
-    build: ./registrar-service
-    environment:
-      REGISTRAR_STATE_PATH: ${REGISTRAR_STATE_PATH:-/data/registrations.json}
-    ports:
-      - "8080:8080"
-    volumes:
-      - registrar_data:/data
-    networks:
-      ctf_net:
-        ipv4_address: 10.0.0.30
-
-  spoof-helper:
-    build: ./spoof-helper
-    cap_add:
-      - NET_RAW
-    environment:
-      SPOOF_HELPER_DRY_RUN: ${SPOOF_HELPER_DRY_RUN:-true}
-    ports:
-      - "8082:8080"
-    networks:
-      ctf_net:
-        ipv4_address: 10.0.0.40
 
   flag-service:
     build: ./flag-service
@@ -66,11 +55,13 @@ services:
       STAGE: stage1
       TARGET_DOMAIN: corebank.meridian.example
       DEFAULT_IP: 1.2.3.6
-      QUERY_INTERVAL: "30"
-      FLAG_1A: ${FLAG_1A:-flag{dev_stage1a_placeholder}}
-      FLAG_1B: ${FLAG_1B:-flag{dev_stage1b_placeholder}}
+      RESOLVER_IP: 10.0.0.3
+      ATTACKER_LISTENER_PORT: "8080"
+      FLAG_1B: "${FLAG_1B:-flag{dev_stage1b_placeholder}}"
     ports:
       - "8081:8080"
+    depends_on:
+      - dnsmasq-vulnerable
     networks:
       ctf_net:
         ipv4_address: 10.0.0.20
@@ -84,5 +75,4 @@ networks:
 
 volumes:
   pops_logs:
-  registrar_data:
-
+  shared_zones:

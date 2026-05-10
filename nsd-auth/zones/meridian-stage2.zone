@@ -1,7 +1,7 @@
 $ORIGIN meridian-stage2.example.
 $TTL 60
 @ IN SOA ns1.meridian-stage2.example. admin.meridian-stage2.example. (
-  2026042701 ; serial
+  2026042702 ; serial
   60         ; refresh
   30         ; retry
   120        ; expire
@@ -10,5 +10,17 @@ $TTL 60
 @        IN NS ns1.meridian-stage2.example.
 ns1      IN A 10.0.2.10
 fragment IN A 1.2.3.7
-large    IN TXT "placeholder-for-large-fragmentation-response"
 
+; Padding TXT records de buoc response > MTU 1500 byte va trigger
+; IP fragmentation tu authoritative ve resolver. CVE-2017-12132 trigger
+; khi glibc res_send advertise EDNS0 buffer 4096 byte nhan response lon.
+fragment IN TXT "padding01: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding02: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding03: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding04: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding05: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding06: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding07: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding08: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding09: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"
+fragment IN TXT "padding10: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation"

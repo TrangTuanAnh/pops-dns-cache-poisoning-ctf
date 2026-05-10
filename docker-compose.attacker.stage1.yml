@@ -1,0 +1,16 @@
+# Override compose cho stage 1: them attacker container chay
+# stage1_flag_b.py.
+#
+# Dung: docker compose -f docker-compose.stage1.yml -f docker-compose.attacker.stage1.yml up -d
+name: pops-ctf-stage1
+
+services:
+  attacker:
+    build:
+      context: .
+      dockerfile: attacker/Dockerfile
+    networks:
+      ctf_net:
+        ipv4_address: 10.0.0.50
+    ports:
+      - "8083:8080"
