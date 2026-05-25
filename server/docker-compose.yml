@@ -1,0 +1,15 @@
+name: bailiwick-breakout
+
+# Only the checker. Challenge artifacts are static files in challenge/,
+# player downloads and analyzes locally.
+
+services:
+  checker:
+    build: .
+    environment:
+      EXPECTED_SOLUTION_FILE: "/app/expected_solution.json"
+    volumes:
+      - ./expected_solution.json:/app/expected_solution.json:ro
+    ports:
+      - "5000:5000"
+    restart: unless-stopped

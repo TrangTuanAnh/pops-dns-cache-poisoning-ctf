@@ -1,70 +1,36 @@
-# Local secrets and environment
-.env
-.env.*
-!.env.example
-
-# OS and editor noise
-.DS_Store
-Thumbs.db
-Desktop.ini
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Logs and runtime output
-*.log
-logs/
-tmp/
-temp/
-*.pid
+# Secrets
+**/.env
+**/.env.*
+!**/.env.example
+challenge/expected_solution.json
+server/expected_solution.json
 
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
+*.egg-info/
 .venv/
 venv/
-dist/
-build/
-*.egg-info/
+.pytest_cache/
 
-# C/C++ build output for resolver experiments
-*.o
-*.obj
-*.exe
-*.out
-*.so
-*.dll
-vulnerable-resolver/resolver_wrapper
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# Node tooling, in case docs/UI helpers are added later
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Docker and lab generated data
+# Docker
 docker-compose.override.yml
-data/
-volumes/
-captures/
-artifacts/
-*.pcap
-*.pcapng
-*.dump
 
-# Large imported source or non-release lab artifacts
-pops/source/*
-!pops/source/README.md
-docs/reference-papers/*
-!docs/reference-papers/.gitkeep
+# Logs / runtime
+*.log
+!challenge/*.log
+logs/
+tmp/
 
-# Private material, keep only the folder note
-reference-solutions/*
-!reference-solutions/README.md
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Per-team dist
+dist/
